@@ -1,254 +1,154 @@
-# Beijing Multi-Site Air Quality — Classification + Regression + Time Series (ARIMA)
+# 🥊 Đấu Trường Dữ Liệu: Màn "Đo Ván" Giữa Regression và ARIMA Trong Dự Báo Bụi Mịn PM2.5
 
-Phân tích dữ liệu chất lượng không khí **Beijing Multi-Site Air Quality (12 stations)** để xây dựng một pipeline hoàn chỉnh gồm:
+![Battle](https://img.shields.io/badge/Battle-Regression_VS_ARIMA-red?style=for-the-badge)
+![Station](https://img.shields.io/badge/Station-Aotizhongxin_Beijing-blue?style=for-the-badge)
+![Horizon](https://img.shields.io/badge/Horizon-1_Hour_Ahead-success?style=for-the-badge)
+![Status](https://img.shields.io/badge/Winner-Regression-brightgreen?style=for-the-badge)
 
-- **Phân lớp mức độ ô nhiễm (AQI level)**: tạo nhãn từ **PM2.5 rolling 24h**, nhưng **KHÔNG dùng PM2.5** trong tập đặc trưng đầu vào (tránh leakage).
-- **Hồi quy (Regression)**: dự đoán **PM2.5 tương lai** theo horizon (ví dụ t+1, t+24…).
-- **Chuỗi thời gian (Time Series)**: phân tích đặc điểm dữ liệu time series “đúng bài giảng” và dự báo **chỉ dùng ARIMA** (statsmodels).
-
-Project triển khai theo pipeline notebook → module hoá trong `src/` → tự động chạy bằng **Papermill** để phục vụ giảng dạy & demo ra quyết định chọn mô hình.
-
----
-
-## Features
-
-### 1) Classification (No PM2.5 in features)
-- Load & merge dữ liệu từ nhiều trạm
-- Làm sạch dữ liệu: missing, kiểu thời gian, chuẩn hoá numeric/object
-- Tạo nhãn **AQI class** từ `pm25_24h` (rolling mean 24h)
-- **Không dùng PM2.5 / pm25_24h làm feature**
-- Đánh giá: Accuracy, Precision/Recall/F1, Confusion Matrix
-- Lưu artifacts: metrics + prediction sample
-
-### 2) Regression (Supervised)
-- Tạo bài toán hồi quy theo time-based split (tránh leakage)
-- Feature engineering cho hồi quy:
-  - time features (hour/day/month/…)
-  - lag features (theo cấu hình)
-- Dự đoán `PM2.5(t + horizon)`
-- Đánh giá: RMSE, MAE, R2
-- Lưu artifacts: model + metrics + prediction sample
-
-### 3) Time Series Forecasting (ARIMA only)
-- Xây dựng chuỗi đơn biến theo **1 trạm** (univariate PM2.5)
-- Phân tích đặc điểm dữ liệu chuỗi thời gian “đúng bài giảng”:
-  - missingness & resampling
-  - rolling mean/std
-  - stationarity tests (ADF/KPSS)
-  - ACF/PACF để định hướng p,q
-  - quyết định d (sai phân) theo kiểm định + quan sát
-- Fit & chọn ARIMA theo AIC/BIC (grid nhỏ)
-- Dự báo + lưu artifacts: summary, predictions, model
+> **"Khi lý thuyết thống kê cổ điển đụng độ với sức mạnh thực dụng của Machine Learning: Ai sẽ là kẻ thống trị bầu trời Bắc Kinh?"**
 
 ---
 
-## Project Structure
+## 👥 Hồ Sơ Nhóm Thực Hiện (Team 13)
 
-```text
-air_quality_timeseries/
-├── data/
-│   ├── raw/
-│   │   └── PRSA2017_Data_20130301-20170228.zip
-│   └── processed/
-│       ├── cleaned.parquet
-│       ├── dataset_for_clf.parquet
-│       ├── metrics.json
-│       ├── predictions_sample.csv
-│       ├── dataset_for_regression.parquet
-│       ├── regressor.joblib
-│       ├── regression_metrics.json
-│       ├── regression_predictions_sample.csv
-│       ├── arima_pm25_summary.json
-│       ├── arima_pm25_predictions.csv
-│       └── arima_pm25_model.pkl
-│
-├── notebooks/
-│   ├── preprocessing_and_eda.ipynb
-│   ├── feature_preparation.ipynb
-│   ├── classification_modelling.ipynb
-│   ├── regression_modelling.ipynb
-│   ├── arima_forecasting.ipynb
-│   └── runs/
-│       ├── preprocessing_and_eda_run.ipynb
-│       ├── feature_preparation_run.ipynb
-│       ├── classification_modelling_run.ipynb
-│       ├── regression_modelling_run.ipynb
-│       └── arima_forecasting_run.ipynb
-│
-├── src/
-│   ├── classification_library.py
-│   ├── regression_library.py
-│   ├── timeseries_library.py
-│   └── __init__.py
-│
-├── run_papermill.py
-├── requirements.txt
-└── README.md
+| Thành viên | Vai trò |
+| :--- | :--- |
+| **Nguyễn Hà Phương** | 🛠 Feature Engineering & Regression Model |
+| **Dương Thị Hoài** | 📈 Time Series Analysis (ARIMA) & Evaluation |
 
-```
+---
 
-## Installation
+## 📑 Mục Lục Hành Trình
 
-```bash
-git clone <your_repo_url>
-cd air_quality_timeseries
-pip install -r requirements.txt
-```
+1.  [**Khúc dạo đầu:** Khi giấc mơ lý thuyết va chạm hiện thực khốc liệt](#-1-khúc-dạo-đầu-khi-lý-thuyết-gặp-hiện-thực)
+2.  [**Chiến trường dữ liệu:** Những cơn "địa chấn" mang tên PM2.5](#-2-dữ-liệu-lên-tiếng-phân-tích-eda)
+3.  [**Diễn biến trận đấu:** Màn "hủy diệt" của Regression trước tượng đài ARIMA](#-3-soi-kết-quả-chiến-thắng-áp-đảo)
+4.  [**Insight "Triệu đô":** Những bài học đắt giá từ sai số](#-5-insight-đắt-giá-rút-ra-từ-thực-nghiệm)
+5.  [**Mổ xẻ thất bại:** Tại sao ARIMA lại "ngã ngựa" đau đớn đến vậy?](#-6-kết-luận--giải-mã-nguyên-nhân)
+6.  [**Lời kết:** Ngôi vương mới của bầu trời Bắc Kinh](#-7-lời-kết)
 
-## Data Preparation
+---
 
-Đặt file gốc vào:
-```
+## 📖 1. Khúc dạo đầu: Khi lý thuyết gặp hiện thực
 
-```bash
-data/raw/PRSA2017_Data_20130301-20170228.zip
-```
-Hoặc tải dataset Beijing Multi-Site Air Quality Data (UCI) và đặt các file trạm vào:
+Chúng tôi bắt đầu hành trình Lab 4 với một giả thuyết khá "dĩ hòa vi quý": *Cả hai trường phái - Hồi quy tuyến tính hiện đại (Regression) và Chuỗi thời gian cổ điển (ARIMA) - đều sẽ có chỗ đứng riêng trong việc dự báo ô nhiễm không khí.*
 
-```bash 
-data/raw/
-```
-Ví dụ
+Tuy nhiên, khi chạy những dòng code cuối cùng trên tập dữ liệu trạm **Aotizhongxin**, màn hình console hiện ra một kết cục không ai ngờ tới. Không có sự cân bằng nào cả. Đó là một cục diện "đơn phương tàn sát".
 
-```bash
-data/raw/station_01.csv
-data/raw/station_02.csv
-...
-data/raw/station_12.csv
-```
+Dưới đây là câu chuyện về cuộc chiến dữ liệu ấy, nơi những con số biết nói lên sự thật trần trụi.
 
-File output sẽ được sinh tự động vào:
-```bash
-data/processed/
-```
+---
 
+## 🔍 2. Dữ liệu lên tiếng (Phân tích EDA)
 
+Trước khi đưa các đấu sĩ lên sàn, hãy nhìn vào "chiến trường" mà họ phải đối mặt.
 
-Run Pipeline (Recommended)
-Chạy toàn bộ phân tích chỉ với 1 lệnh:
+### 📸 Hình 1: Toàn cảnh sự hỗn loạn & Đường dự báo
+![Overview Plot](images/hinh1.png)
+*(Tổng quan PM2.5 và kết quả dự báo của 2 mô hình trên toàn tập Test)*
 
-```bash
-python run_papermill.py
-```
-Kết quả sinh ra:
+> **🧐 Quan sát "nhà nghề":**
+> Dữ liệu PM2.5 tại Bắc Kinh không hề êm ả. Nó là tập hợp của những cú **Spikes (Gai nhọn)** dựng đứng, biểu thị cho những đợt ô nhiễm bùng phát bất ngờ.
+> * **Góc Xanh (Regression):** Đường dự báo bám dính lấy thực tế như hình với bóng. Nó dao động cùng nhịp với "nhịp thở" của thành phố.
+> * **Góc Đỏ (ARIMA):** Một sự thất vọng tràn trề. Đường dự báo trông như **nhịp tim của một người đã chết (Flatline)** — đi ngang một cách vô cảm, hoàn toàn phớt lờ những cơn bão bụi đang diễn ra.
 
-```bash
-data/processed/cleaned.parquet
-data/processed/dataset_for_clf.parquet
-data/processed/metrics.json
-data/processed/predictions_sample.csv
+### 📸 Hình 3: Giải mã cấu trúc (ACF/PACF)
+![ACF Plot](images/hinh3.png)
+*(Biểu đồ Tự tương quan - Chìa khóa chọn tham số)*
 
-data/processed/dataset_for_regression.parquet
-data/processed/regressor.joblib
-data/processed/regression_metrics.json
-data/processed/regression_predictions_sample.csv
+> **🧐 Quan sát "nhà nghề":**
+> Biểu đồ ACF (bên trái) giảm dần cực kỳ chậm chạp. Trong ngôn ngữ thống kê, đây là dấu hiệu của **Long Memory (Trí nhớ dài hạn)**.
+> * *Ý nghĩa:* Dữ liệu quá khứ ảnh hưởng rất dai dẳng đến hiện tại.
+> * *Hệ quả:* Điều này buộc ARIMA phải sử dụng sai phân ($d=1$) để khử xu hướng. Tuy nhiên, chính "con dao hai lưỡi" này dường như đã cắt bỏ luôn cả những thông tin quan trọng về các điểm cực đại (Extreme Values).
 
-data/processed/arima_pm25_summary.json
-data/processed/arima_pm25_predictions.csv
-data/processed/arima_pm25_model.pkl
+---
 
-notebooks/runs/arima_forecasting_run.ipynb
-```
+## 🥊 3. "Soi" kết quả: Chiến thắng áp đảo
 
-### Changing Parameters
-Các tham số có thể chỉnh trong run_papermill.py:
+Khi phóng to (Zoom-in) vào chi tiết, sự chênh lệch về đẳng cấp giữa hai mô hình hiện ra rõ mồn một.
 
-#### Preprocessing/EDA
-```python
-USE_UCIMLREPO = False
-RAW_ZIP_PATH = "data/raw/PRSA2017_Data_20130301-20170228.zip"
-LAG_HOURS = [1, 3, 24]
-```
+### 📊 Bảng điểm tử thần (Metrics)
 
-#### Classification
-```python
-CUTOFF = "2017-01-01"   # time-based split
-# (PM2.5 bị loại khỏi features trong library để tránh leakage)
-```
+| Metric | Regression (Hồi quy) | ARIMA (Chuỗi thời gian) | ⚡ Nhận xét nóng |
+| :--- | :---: | :---: | :--- |
+| **RMSE** | **28.33** | 106.29 | Sai số của ARIMA cao gấp **~3.7 lần**! Một khoảng cách không thể san lấp. |
+| **MAE** | **14.54** | 79.41 | Regression sai lệch trung bình rất thấp, hoàn toàn chấp nhận được cho cảnh báo sớm. |
 
-#### Regression
-```python
-HORIZON = 1                       # dự đoán PM2.5(t + HORIZON)
-TARGET_COL = "PM2.5"
-OUTPUT_REG_DATASET_PATH = "data/processed/dataset_for_regression.parquet"
-CUTOFF = "2017-01-01"
-MODEL_OUT = "regressor.joblib"
-METRICS_OUT = "regression_metrics.json"
-PRED_SAMPLE_OUT = "regression_predictions_sample.csv"
-```
+### 📸 Hình 2: Zoom vào chi tiết (Bằng chứng đanh thép nhất)
+![Zoom Plot](images/hinh2.png)
+*(Cận cảnh 150 giờ đầu tiên: Sự khác biệt giữa "Bám đuổi" và "Buông xuôi")*
 
-#### ARIMA 
-```
-STATION = "Aotizhongxin"
-VALUE_COL = "PM2.5"
-CUTOFF = "2017-01-01"
+> **🕵️ Phân tích sâu:**
+> * **Regression (Màu xanh lá):** Hãy nhìn cách nó uốn lượn! Đường dự báo bám sát từng đỉnh (peak) và đáy (trough) của thực tế. Mô hình phản ứng tức thì (Instant Reaction).
+>     * *Bí mật:* Nó sử dụng đặc trưng `Lag_1` (Giá trị của 1 giờ trước). Với dự báo ngắn hạn, "giờ trước" chính là lời tiên tri chính xác nhất cho "giờ này".
+> * **ARIMA (Màu đỏ):** Một thảm họa. Sau vài bước đầu cố gắng gượng gạo, đường màu đỏ nhanh chóng **tắt dần** và đi ngang. Nó giống như một người dự báo an toàn và lười biếng: *"Tôi không biết chuyện gì sẽ xảy ra, nên tôi cứ đoán giá trị trung bình cho chắc ăn"*.
 
-P_MAX = 3
-Q_MAX = 3
-D_MAX = 2
-IC = "aic"                         # hoặc "bic"
-ARTIFACTS_PREFIX = "arima_pm25"
-```
+### 📸 Hình 4 & 5: Kiểm chứng sự sai lệch
 
+**Hình 4 (Dự báo ARIMA - Sự bất lực):**
+![Forecast Plot](images/hinh4.png)
+> Vùng màu hồng (Khoảng tin cậy 95%) mở rộng mênh mông nhưng vô nghĩa. Xu hướng dự báo là một đường cong trượt dốc rồi đi thẳng, hoàn toàn tách rời khỏi thực tế hỗn loạn của các chấm đen dữ liệu.
 
-Hoặc sửa trong cell PARAMETERS của mỗi notebook để chạy với cấu hình khác nhau.
+**Hình 5 (Scatter Plot - Sự thật trần trụi):**
+![Scatter Plot](images/hinh5.png)
+*(Trục X: Thực tế | Trục Y: Dự báo)*
 
-### Visualization & Results
+> * **Regression (Chấm xanh):** Các điểm tụ lại dọc theo đường chéo lý tưởng $y=x$. Đây là dấu hiệu của một mô hình **High Precision (Độ chính xác cao)**.
+> * **ARIMA (Chấm đỏ):** Tạo thành một... đường nằm ngang kỳ dị.
+>     * *Điều này nghĩa là gì?* Dù thực tế (Trục X) có tăng từ 0 lên 700 (ô nhiễm cực nặng), thì ARIMA (Trục Y) vẫn chỉ loanh quanh dự báo ở mức 80-100. Mô hình đã bị **"mù"** trước các biến động lớn.
 
-Notebook preprocessing_and_eda.ipynb:
+---
+## 💡 5 Insight "Đắt Giá" Rút Ra Từ Thực Nghiệm
 
-  kiểm tra missingness, phân phối, xu hướng theo thời gian
+Từ sự chênh lệch hiệu suất khủng khiếp giữa hai mô hình (RMSE 28 vs 106), nhóm nghiên cứu rút ra 5 bài học cốt lõi cho bài toán dự báo ô nhiễm không khí:
 
-  gợi ý seasonality (24h, tuần) để định hướng mô hình
+### 1. Sức mạnh tuyệt đối của "Quá khứ gần" (The Power of Recency)
+Trong khung thời gian ngắn (1 giờ), **`Lag_1` (nồng độ bụi của 1 giờ trước)** là chỉ báo quyền lực nhất.
+* *Lý giải:* Không khí có tính "quán tính". Nếu 7h sáng ô nhiễm nặng, 99% khả năng 8h sáng vẫn ô nhiễm nặng. Mô hình Regression chiến thắng nhờ việc đơn giản hóa bài toán thành việc "nhìn lại giờ trước", trong khi ARIMA cố gắng tìm kiếm các quy luật phức tạp xa xôi hơn mà vô tình bỏ qua tín hiệu mạnh nhất ngay trước mắt.
 
-Notebook regression_modelling.ipynb:
+### 2. "Tử huyệt" Mean Reversion của ARIMA
+Biểu đồ cho thấy đường ARIMA đi ngang (flatline) ở mức trung bình. Đây là hiện tượng **Mean Reversion (Quay về trung bình)**.
+* *Lý giải:* Khi dữ liệu có độ biến động quá cao (High Volatility) và nhiễu (Noise) như bụi mịn Bắc Kinh, mô hình ARIMA thường "đầu hàng" bằng cách dự báo một giá trị an toàn ở giữa để giảm thiểu sai số bình phương trung bình trong dài hạn. Nhưng trong thực tế, dự báo "an toàn" này lại là dự báo **vô dụng nhất** vì nó bỏ lỡ toàn bộ các đợt bùng phát ô nhiễm.
 
-  dự đoán PM2.5(t+h), đánh giá RMSE/MAE/R2, minh hoạ leakage và lý do time-split
+### 3. Dự báo Spikes (Đỉnh nhọn) quan trọng hơn xu hướng
+Về mặt y tế, việc dự báo chính xác các đỉnh nhọn (khi PM2.5 > 300) quan trọng hơn nhiều so với việc dự báo đúng xu hướng trung bình.
+* *Insight:* Regression đã làm rất tốt việc bắt các đỉnh này (xem Hình 2). Điều này có ý nghĩa sống còn: Cảnh báo người dân **đúng lúc nguy hiểm nhất** thay vì đưa ra một con số trung bình vô thưởng vô phạt như ARIMA.
 
-Notebook arima_forecasting.ipynb:
+### 4. Đừng thần thánh hóa mô hình chuyên biệt
+Chúng ta thường nghĩ: *"Dữ liệu chuỗi thời gian thì phải dùng mô hình Time Series (như ARIMA/LSTM)"*. Tuy nhiên, kết quả chứng minh điều ngược lại.
+* *Bài học:* Với các chuỗi dữ liệu phi tuyến tính và hỗn loạn, việc chuyển đổi bài toán sang **Supervised Learning (Hồi quy)** thường mang lại kết quả tốt hơn, dễ kiểm soát hơn và ít bị ràng buộc bởi các giả định khắt khe (như tính dừng - stationarity) của mô hình thống kê cổ điển.
 
-  ADF/KPSS, rolling mean/std, ACF/PACF
+### 5. Tính khả thi khi triển khai (Deployment)
+Xét về góc độ kỹ thuật hệ thống (Engineering):
+* **Regression:** Chỉ cần lưu trữ 24 giờ dữ liệu gần nhất để tạo đặc trưng đầu vào. Tính toán cực nhanh (mili-giây).
+* **ARIMA:** Cần lưu trữ lịch sử dài hơn để tính toán tham số, tốc độ suy diễn chậm hơn và cần tái huấn luyện (re-train) thường xuyên để cập nhật hệ số.
+👉 **Kết luận:** Regression không chỉ chính xác hơn mà còn **rẻ hơn và nhanh hơn** khi triển khai hệ thống Real-time.
 
-  chọn (p,d,q) theo AIC/BIC và dự báo ARIMA
+---
+## 🧠 6. Kết luận & Giải mã nguyên nhân
 
-Bạn có thể export notebook chạy ra HTML:
+Tại sao một tượng đài như ARIMA lại thua đau đớn trước Regression đơn giản?
 
-```bash
-jupyter nbconvert notebooks/runs/03_classification_modelling_run.ipynb --to html
-```
+### 1️⃣ Sức mạnh hủy diệt của "Lag Features"
+Với bài toán dự báo **ngắn hạn (1 giờ)**, thông tin quan trọng nhất không phải là chu kỳ mùa vụ phức tạp, mà đơn giản là: *"Giờ trước ô nhiễm bao nhiêu?"*.
+Mô hình Regression (Gradient Boosting) đã tận dụng triệt để thông tin này thông qua biến `Lag_1`. Nó hoạt động như một cơ chế **"Gương phản chiếu"**, sao chép trạng thái gần nhất để đưa ra dự đoán.
 
-## Ứng dụng thực tế 
+### 2️⃣ Cái bẫy "Mean Reversion" của ARIMA
+ARIMA được thiết kế để tìm kiếm sự ổn định (Stationarity) và các quy luật tuyến tính. Khi đối mặt với một chuỗi dữ liệu bụi mịn có tính ngẫu nhiên cao và nhiều cú sốc (shocks) từ môi trường, ARIMA có xu hướng quay về trạng thái an toàn: **Hồi quy về giá trị trung bình (Mean Reversion)**.
+Nó không dám dự báo các đỉnh nhọn vì trong mắt nó, đó là nhiễu (noise) hoặc sự bất thường, dẫn đến việc thất bại toàn tập trong việc bắt đỉnh.
 
-Thiết kế bài giảng “end-to-end”:
+---
 
-  phân lớp mức độ ô nhiễm (classification) + chống leakage
+## 🏆 7. Lời kết
 
-  hồi quy dự đoán chỉ số PM2.5 tương lai (regression)
+**KẾT LUẬN CUỐI CÙNG:**
 
-  phân tích chuỗi thời gian và quyết định dùng ARIMA (time series)
+Trong đấu trường dự báo chất lượng không khí ngắn hạn (Short-term Forecasting) tại trạm Aotizhongxin:
 
-Demo ra quyết định mô hình dựa trên:
+* ❌ **ARIMA:** Bị loại ngay từ vòng gửi xe. Không có khả năng ứng dụng thực tế do độ trễ quá lớn và sai số khổng lồ.
+* 👑 **Regression:** Nhà vô địch tuyệt đối.
 
-  stationarity (ADF/KPSS), ACF/PACF
+**Khuyến nghị:** Nhóm 13 đề xuất sử dụng mô hình **Regression** để xây dựng hệ thống cảnh báo sớm (Early Warning System), giúp người dân Bắc Kinh biết trước được mức độ ô nhiễm trong 1 giờ tới với độ tin cậy cao.
 
-  tiêu chí IC (AIC/BIC) và kiểm tra sai số dự báo
-
-### Tech Stack
-
-| Công nghệ | Mục đích |
-|----------|----------|
-| Python | Ngôn ngữ chính |
-| Pandas | Xử lý dữ liệu transaction |
-| Scikit-learn | Modelling & metrics |
-| Statsmodels  | ARIMA               |
-| Papermill | Chạy pipeline notebook tự động |
-| Matplotlib & Seaborn | Visualization biểu đồ tĩnh |
-| Plotly | Dashboard / biểu đồ tương tác |
-| Jupyter Notebook | Môi trường notebook |
-
-### Author
-Project được thực hiện bởi:
-Trang Le
-
-### License
-MIT — sử dụng tự do cho nghiên cứu, học thuật và ứng dụng nội bộ.
+---
+*Thực hiện bởi: Nhóm 13 - Lab 4 Khai phá dữ liệu.*
